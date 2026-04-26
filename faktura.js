@@ -1,6 +1,7 @@
 // =====================================================
-// faktura.js - Detaljesidens logik
-// Viser PDF/billede + redigerbare felter med gem-knap
+// faktura.js - Detaljeside med opdelte sektioner
+// Sektion 1: Bilagsspecifikke felter (varierer per faktura)
+// Sektion 2: Leverandørdata (kandidater til skabelon)
 // =====================================================
 
 const db = window.supabase.createClient(
@@ -8,7 +9,6 @@ const db = window.supabase.createClient(
   SUPABASE_PUBLISHABLE_KEY
 );
 
-// DOM
 const loadingEl = document.getElementById('loading');
 const errorEl = document.getElementById('error');
 const errorTextEl = document.getElementById('error-text');
@@ -22,39 +22,53 @@ const saveBtn = document.getElementById('save-btn');
 const cancelBtn = document.getElementById('cancel-btn');
 const changesIndicator = document.getElementById('changes-indicator');
 
-// State
-let currentFaktura = null;       // sidste indlæste/gemte version
+let currentFaktura = null;
 let pollCount = 0;
 const MAX_POLLS = 30;
 
-// Felt-definitioner: hvilke der vises, hvordan
-const FELTER = [
-  // Gruppe: Leverandør
-  { gruppe: 'Leverandør', felt: 'leverandoer_navn', label: 'Navn', type: 'text' },
-  { gruppe: 'Leverandør', felt: 'leverandoer_cvr', label: 'CVR', type: 'text', maxlength: 8 },
-  { gruppe: 'Leverandør', felt: 'leverandoer_adresse', label: 'Adresse', type: 'textarea' },
+// =====================================================
+// Felt-definitioner: opdelt i to sektioner
+// =====================================================
+
+// SEKTION 1: Bilagsspecifikke felter
+// Disse ændrer sig per faktura - skal udfyldes hver gang
+const FELTER_BILAG = [
+  { gruppe: 'Bogføring', felt: 'bogforingsbeskrivelse', label: 'Beskrivelse', type: 'text', maxlength: 30 },
   
-  // Gruppe: Faktura
   { gruppe: 'Faktura', felt: 'fakturanummer', label: 'Fakturanummer', type: 'text' },
   { gruppe: 'Faktura', felt: 'fakturadato', label: 'Fakturadato', type: 'date' },
   { gruppe: 'Faktura', felt: 'forfaldsdato', label: 'Forfaldsdato', type: 'date' },
   
-  // Gruppe: Beløb
   { gruppe: 'Beløb', felt: 'belob_eksk_moms', label: 'Beløb ekskl. moms', type: 'number', step: '0.01' },
-  { gruppe: 'Beløb', felt: 'momssats', label: 'Momssats (%)', type: 'number', step: '0.01' },
   { gruppe: 'Beløb', felt: 'momsbelob', label: 'Momsbeløb', type: 'number', step: '0.01' },
   { gruppe: 'Beløb', felt: 'belob_inkl_moms', label: 'Beløb inkl. moms', type: 'number', step: '0.01' },
-  { gruppe: 'Beløb', felt: 'valuta', label: 'Valuta', type: 'text', maxlength: 3 },
   
-  // Gruppe: Betalingsoplysninger
-  { gruppe: 'Betalingsoplysninger', felt: 'betalingskonto_iban', label: 'IBAN', type: 'text' },
-  { gruppe: 'Betalingsoplysninger', felt: 'betalingskonto_bic', label: 'BIC', type: 'text' },
-  { gruppe: 'Betalingsoplysninger', felt: 'betalingskonto_regnr', label: 'Reg.nr', type: 'text', maxlength: 4 },
-  { gruppe: 'Betalingsoplysninger', felt: 'betalingskonto_kontonr', label: 'Kontonr', type: 'text' },
-  { gruppe: 'Betalingsoplysninger', felt: 'betalingsreference', label: 'Reference', type: 'text' }
+  { gruppe: 'Reference', felt: 'betalingsreference', label: 'Betalingsreference', type: 'text' }
 ];
 
-// Hent ID fra URL
+// SEKTION 2: Leverandørdata (kandidater til skabelon)
+// Disse er typisk faste for samme leverandør - genbruges
+const FELTER_LEVERANDOR = [
+  { gruppe: 'Identifikation', felt: 'leverandoer_navn', label: 'Navn', type: 'text' },
+  { gruppe: 'Identifikation', felt: 'leverandoer_cvr', label: 'CVR', type: 'text', maxlength: 8 },
+  { gruppe: 'Identifikation', felt: 'leverandoer_adresse', label: 'Adresse', type: 'textarea' },
+  
+  { gruppe: 'Bankoplysninger', felt: 'betalingskonto_iban', label: 'IBAN', type: 'text' },
+  { gruppe: 'Bankoplysninger', felt: 'betalingskonto_bic', label: 'BIC', type: 'text' },
+  { gruppe: 'Bankoplysninger', felt: 'betalingskonto_regnr', label: 'Reg.nr', type: 'text', maxlength: 4 },
+  { gruppe: 'Bankoplysninger', felt: 'betalingskonto_kontonr', label: 'Kontonr', type: 'text' },
+  
+  { gruppe: 'Standard', felt: 'valuta', label: 'Valuta', type: 'text', maxlength: 3 },
+  { gruppe: 'Standard', felt: 'momssats', label: 'Momssats (%)', type: 'number', step: '0.01' }
+];
+
+// Alle felter samlet - bruges til lookup ved konvertering
+const ALLE_FELTER = [...FELTER_BILAG, ...FELTER_LEVERANDOR];
+
+// =====================================================
+// Indlæsning
+// =====================================================
+
 const urlParams = new URLSearchParams(window.location.search);
 const fakturaId = urlParams.get('id');
 
@@ -63,10 +77,6 @@ if (!fakturaId) {
 } else {
   loadFaktura();
 }
-
-// =====================================================
-// Indlæs faktura
-// =====================================================
 
 async function loadFaktura() {
   try {
@@ -107,7 +117,6 @@ function renderFaktura(faktura, fileUrl) {
   loadingEl.classList.add('hidden');
   contentEl.classList.remove('hidden');
   
-  // Header
   const titel = faktura.leverandoer_navn || faktura.fil_navn || 'Faktura';
   pageTitle.textContent = titel;
   
@@ -119,7 +128,6 @@ function renderFaktura(faktura, fileUrl) {
   }[faktura.status] || faktura.status;
   pageSubtitle.textContent = status;
   
-  // Status-banner
   if (faktura.status === 'extraction_failed') {
     errorEl.classList.remove('hidden');
     errorEl.className = 'status-banner error';
@@ -128,13 +136,8 @@ function renderFaktura(faktura, fileUrl) {
     showProcessingBanner();
   }
   
-  // Konfidens-badge
   renderKonfidens(faktura.llm_konfidensscore);
-  
-  // PDF/billede
   renderFile(faktura, fileUrl);
-  
-  // Felter (formular)
   renderFelter(faktura);
 }
 
@@ -161,9 +164,63 @@ function renderKonfidens(score) {
 }
 
 function renderFelter(faktura) {
-  // Group felter by gruppe
+  let html = '';
+  
+  // SEKTION 1: Bilagsspecifikt
+  html += `
+    <div class="felt-sektion bilag">
+      <div class="felt-sektion-header">
+        <div class="felt-sektion-titel">
+          <span class="ikon">📋</span>
+          Bilagsspecifikt
+        </div>
+        <span class="felt-sektion-tag">Per faktura</span>
+      </div>
+      ${renderFeltGruppe(FELTER_BILAG, faktura)}
+    </div>
+  `;
+  
+  // SEKTION 2: Leverandørdata
+  html += `
+    <div class="felt-sektion leverandor">
+      <div class="felt-sektion-header">
+        <div class="felt-sektion-titel">
+          <span class="ikon">🏢</span>
+          Leverandørdata
+        </div>
+        <span class="felt-sektion-tag">Kandidat til skabelon</span>
+      </div>
+      ${renderFeltGruppe(FELTER_LEVERANDOR, faktura)}
+    </div>
+  `;
+  
+  // Fil-info som ekstra readonly-sektion
+  html += `
+    <div class="felt-sektion">
+      <div class="felt-sektion-header">
+        <div class="felt-sektion-titel">
+          <span class="ikon">📎</span>
+          Fil
+        </div>
+      </div>
+      ${renderReadonlyFelt('Filnavn', faktura.fil_navn)}
+      ${renderReadonlyFelt('Uploadet', formatDatoTid(faktura.oprettet_dato))}
+    </div>
+  `;
+  
+  felterForm.innerHTML = html;
+  
+  felterForm.querySelectorAll('input, textarea').forEach(input => {
+    input.addEventListener('input', handleFieldChange);
+  });
+  
+  updateChangesUI();
+}
+
+function renderFeltGruppe(felter, faktura) {
+  // Group by gruppe
   const grupper = {};
-  FELTER.forEach(def => {
+  felter.forEach(def => {
     if (!grupper[def.gruppe]) grupper[def.gruppe] = [];
     grupper[def.gruppe].push(def);
   });
@@ -180,21 +237,7 @@ function renderFelter(faktura) {
     html += `</div>`;
   });
   
-  // Fil-info som ekstra read-only sektion
-  html += `<div class="felt-gruppe">`;
-  html += `<div class="felt-gruppe-titel">Fil</div>`;
-  html += renderReadonlyFelt('Filnavn', faktura.fil_navn);
-  html += renderReadonlyFelt('Uploadet', formatDatoTid(faktura.oprettet_dato));
-  html += `</div>`;
-  
-  felterForm.innerHTML = html;
-  
-  // Bind change-listeners til alle inputs
-  felterForm.querySelectorAll('input, textarea').forEach(input => {
-    input.addEventListener('input', handleFieldChange);
-  });
-  
-  updateChangesUI();
+  return html;
 }
 
 function renderFeltInput(def, vaerdi) {
@@ -285,7 +328,7 @@ function updateChangesUI() {
 }
 
 // =====================================================
-// Gem-knap
+// Gem og fortryd
 // =====================================================
 
 saveBtn.addEventListener('click', async () => {
@@ -296,7 +339,6 @@ saveBtn.addEventListener('click', async () => {
   saveBtn.textContent = 'Gemmer...';
   
   try {
-    // Konvertér felter til rette typer
     const dbUpdates = {};
     for (const [navn, vaerdi] of Object.entries(aendringer)) {
       dbUpdates[navn] = konverterTilDbVaerdi(navn, vaerdi);
@@ -313,7 +355,6 @@ saveBtn.addEventListener('click', async () => {
     
     currentFaktura = data;
     
-    // Opdater data-original på alle inputs så de matcher de gemte værdier
     felterForm.querySelectorAll('input[name], textarea[name]').forEach(input => {
       const navn = input.name;
       const ny = data[navn];
@@ -323,18 +364,15 @@ saveBtn.addEventListener('click', async () => {
       input.classList.remove('changed');
     });
     
-    // Vis succes
     changesIndicator.textContent = '✓ Gemt';
     changesIndicator.className = 'changes-indicator saved';
     saveBtn.disabled = true;
     cancelBtn.disabled = true;
     
-    // Opdater header hvis leverandørnavn ændret
     if (data.leverandoer_navn) {
       pageTitle.textContent = data.leverandoer_navn;
     }
     
-    // Tilbagestil tekst på knap efter et øjeblik
     setTimeout(() => {
       changesIndicator.textContent = 'Ingen ændringer';
       changesIndicator.className = 'changes-indicator none';
@@ -349,10 +387,6 @@ saveBtn.addEventListener('click', async () => {
   }
 });
 
-// =====================================================
-// Fortryd-knap
-// =====================================================
-
 cancelBtn.addEventListener('click', () => {
   felterForm.querySelectorAll('input[name], textarea[name]').forEach(input => {
     input.value = input.dataset.original || '';
@@ -362,7 +396,7 @@ cancelBtn.addEventListener('click', () => {
 });
 
 // =====================================================
-// Status-banners og polling
+// Status og polling
 // =====================================================
 
 function showProcessingBanner() {
@@ -408,10 +442,9 @@ async function pollForUpdates() {
 // =====================================================
 
 function konverterTilDbVaerdi(felt, raVaerdi) {
-  const def = FELTER.find(f => f.felt === felt);
+  const def = ALLE_FELTER.find(f => f.felt === felt);
   if (!def) return raVaerdi || null;
   
-  // Tom streng → null
   if (raVaerdi === '' || raVaerdi === null || raVaerdi === undefined) return null;
   
   if (def.type === 'number') {
