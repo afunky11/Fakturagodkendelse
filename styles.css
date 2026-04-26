@@ -1,5 +1,37 @@
+/* =====================================================
+   BankInvest farvepalette + Work Sans
+   ===================================================== */
+:root {
+  /* Primære farver */
+  --bi-darkblue: #042f4e;
+  --bi-darkblue-hover: #0a4670;
+  --bi-lightblue: #4dbcc6;
+  --bi-lightblue-hover: #6acdd6;
+  
+  /* Baggrunde */
+  --bi-bg-page: #f4fafe;
+  --bi-bg-card: #ffffff;
+  --bi-bg-section: #E3F3FD;
+  
+  /* Status */
+  --bi-success: #63866C;
+  --bi-success-bg: #d4e2cb;
+  --bi-warning: #d4824a;
+  --bi-warning-bg: #fae0ce;
+  --bi-error: #cc7977;
+  --bi-error-bg: #f5d4d3;
+  
+  /* Tekst */
+  --bi-text: #042f4e;
+  --bi-text-muted: #5a7a92;
+  --bi-text-faded: #94a3b8;
+  
+  /* Linjer */
+  --bi-border: #d1e4f0;
+  --bi-border-light: #e8f1f8;
+}
 
-/* === Reset og grundlæggende === */
+/* === Reset === */
 * {
   margin: 0;
   padding: 0;
@@ -7,9 +39,9 @@
 }
 
 body {
-  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
-  background: #f5f7fa;
-  color: #2c3e50;
+  font-family: 'Work Sans', -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+  background: var(--bi-bg-page);
+  color: var(--bi-text);
   min-height: 100vh;
   display: flex;
   flex-direction: column;
@@ -17,7 +49,7 @@ body {
 
 /* === Header === */
 header {
-  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+  background: var(--bi-darkblue);
   color: white;
   padding: 24px 20px;
   text-align: center;
@@ -26,11 +58,13 @@ header {
 header h1 {
   font-size: 28px;
   margin-bottom: 4px;
+  font-weight: 600;
 }
 
 .subtitle {
   font-size: 14px;
-  opacity: 0.9;
+  opacity: 0.85;
+  color: var(--bi-lightblue);
 }
 
 /* === Main layout === */
@@ -43,16 +77,16 @@ main {
 }
 
 section {
-  background: white;
+  background: var(--bi-bg-card);
   border-radius: 12px;
   padding: 24px;
   margin-bottom: 20px;
-  box-shadow: 0 2px 8px rgba(0,0,0,0.06);
+  box-shadow: 0 2px 8px rgba(4, 47, 78, 0.08);
 }
 
 /* === Dropzone === */
 .dropzone {
-  border: 2px dashed #cbd5e0;
+  border: 2px dashed var(--bi-border);
   border-radius: 10px;
   padding: 40px 20px;
   text-align: center;
@@ -61,8 +95,8 @@ section {
 }
 
 .dropzone.dragover {
-  border-color: #667eea;
-  background: #f0f4ff;
+  border-color: var(--bi-lightblue);
+  background: var(--bi-bg-section);
 }
 
 .upload-icon {
@@ -74,10 +108,11 @@ section {
   font-size: 18px;
   font-weight: 600;
   margin-bottom: 8px;
+  color: var(--bi-darkblue);
 }
 
 .dropzone-or {
-  color: #94a3b8;
+  color: var(--bi-text-faded);
   margin: 12px 0;
   font-size: 14px;
 }
@@ -92,7 +127,7 @@ section {
 
 .dropzone-hint {
   font-size: 13px;
-  color: #94a3b8;
+  color: var(--bi-text-faded);
   margin-top: 12px;
 }
 
@@ -110,53 +145,76 @@ section {
   cursor: pointer;
   transition: all 0.15s;
   text-decoration: none;
+  font-family: inherit;
+}
+
+.btn:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
 }
 
 .btn-primary {
-  background: #667eea;
+  background: var(--bi-darkblue);
   color: white;
 }
 
-.btn-primary:hover {
-  background: #5568d3;
+.btn-primary:hover:not(:disabled) {
+  background: var(--bi-darkblue-hover);
 }
 
 .btn-secondary {
-  background: #e2e8f0;
-  color: #2c3e50;
+  background: var(--bi-lightblue);
+  color: white;
 }
 
-.btn-secondary:hover {
-  background: #cbd5e0;
+.btn-secondary:hover:not(:disabled) {
+  background: var(--bi-lightblue-hover);
+}
+
+.btn-tertiary {
+  background: var(--bi-bg-section);
+  color: var(--bi-darkblue);
+  border: 1px solid var(--bi-border);
+}
+
+.btn-tertiary:hover:not(:disabled) {
+  background: var(--bi-border-light);
+}
+
+.btn-success {
+  background: var(--bi-success);
+  color: white;
 }
 
 .btn-icon {
   background: transparent;
   font-size: 20px;
   padding: 6px 10px;
+  color: var(--bi-darkblue);
 }
 
 .btn-icon:hover {
-  background: #f1f5f9;
+  background: var(--bi-bg-section);
 }
 
 /* === Upload status === */
 .upload-status {
   margin-top: 20px;
   padding: 16px;
-  background: #f0f4ff;
+  background: var(--bi-bg-section);
   border-radius: 8px;
   display: flex;
   align-items: center;
   gap: 12px;
   justify-content: center;
+  color: var(--bi-darkblue);
 }
 
 .spinner {
   width: 20px;
   height: 20px;
-  border: 3px solid #e2e8f0;
-  border-top-color: #667eea;
+  border: 3px solid var(--bi-border);
+  border-top-color: var(--bi-lightblue);
   border-radius: 50%;
   animation: spin 0.8s linear infinite;
 }
@@ -179,6 +237,7 @@ section {
 
 .list-header h2 {
   font-size: 20px;
+  color: var(--bi-darkblue);
 }
 
 .faktura-list {
@@ -191,7 +250,7 @@ section {
   display: flex;
   align-items: center;
   padding: 14px 16px;
-  border: 1px solid #e2e8f0;
+  border: 1px solid var(--bi-border);
   border-radius: 8px;
   cursor: pointer;
   transition: all 0.15s;
@@ -200,8 +259,8 @@ section {
 }
 
 .faktura-item:hover {
-  border-color: #667eea;
-  background: #f8faff;
+  border-color: var(--bi-lightblue);
+  background: var(--bi-bg-page);
 }
 
 .faktura-info {
@@ -212,6 +271,7 @@ section {
 .faktura-leverandor {
   font-weight: 600;
   font-size: 15px;
+  color: var(--bi-darkblue);
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
@@ -219,13 +279,14 @@ section {
 
 .faktura-meta {
   font-size: 13px;
-  color: #64748b;
+  color: var(--bi-text-muted);
   margin-top: 2px;
 }
 
 .faktura-belob {
   font-weight: 600;
   font-size: 16px;
+  color: var(--bi-darkblue);
   margin-right: 12px;
   white-space: nowrap;
 }
@@ -239,28 +300,28 @@ section {
 }
 
 .status-uploaded {
-  background: #fef3c7;
-  color: #92400e;
+  background: var(--bi-warning-bg);
+  color: var(--bi-warning);
 }
 
 .status-extracting {
-  background: #dbeafe;
-  color: #1e40af;
+  background: var(--bi-bg-section);
+  color: var(--bi-darkblue);
 }
 
 .status-extracted {
-  background: #d1fae5;
-  color: #065f46;
+  background: var(--bi-success-bg);
+  color: var(--bi-success);
 }
 
 .status-extraction_failed {
-  background: #fee2e2;
-  color: #991b1b;
+  background: var(--bi-error-bg);
+  color: var(--bi-error);
 }
 
 .loading, .empty {
   text-align: center;
-  color: #94a3b8;
+  color: var(--bi-text-faded);
   padding: 30px;
   font-size: 14px;
 }
@@ -270,10 +331,232 @@ footer {
   text-align: center;
   padding: 20px;
   font-size: 12px;
-  color: #94a3b8;
+  color: var(--bi-text-faded);
 }
 
-/* === Mobil === */
+/* =====================================================
+   Detaljeside
+   ===================================================== */
+
+.detail-container {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 20px;
+  max-width: 1400px;
+  margin: 0 auto;
+  align-items: start;
+}
+
+.pdf-panel, .felter-panel {
+  background: var(--bi-bg-card);
+  border-radius: 12px;
+  padding: 20px;
+  box-shadow: 0 2px 8px rgba(4, 47, 78, 0.08);
+}
+
+.pdf-viewer {
+  width: 100%;
+  height: 80vh;
+  border: 1px solid var(--bi-border);
+  border-radius: 8px;
+  background: var(--bi-bg-page);
+}
+
+.image-viewer {
+  width: 100%;
+  max-height: 80vh;
+  object-fit: contain;
+  border: 1px solid var(--bi-border);
+  border-radius: 8px;
+  background: var(--bi-bg-page);
+}
+
+.felter-panel-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 16px;
+  padding-bottom: 12px;
+  border-bottom: 1px solid var(--bi-border-light);
+}
+
+.felter-panel-header h2 {
+  font-size: 18px;
+  color: var(--bi-darkblue);
+}
+
+/* Felt-grupper */
+.felt-gruppe {
+  margin-bottom: 24px;
+}
+
+.felt-gruppe-titel {
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--bi-text-muted);
+  text-transform: uppercase;
+  letter-spacing: 0.8px;
+  margin-bottom: 12px;
+}
+
+.felt-rk {
+  display: grid;
+  grid-template-columns: 140px 1fr;
+  align-items: center;
+  gap: 12px;
+  padding: 8px 0;
+  border-bottom: 1px solid var(--bi-border-light);
+}
+
+.felt-rk:last-child {
+  border-bottom: none;
+}
+
+.felt-label {
+  font-size: 13px;
+  color: var(--bi-text-muted);
+}
+
+.felt-input {
+  width: 100%;
+  padding: 8px 10px;
+  border: 1px solid var(--bi-border);
+  border-radius: 6px;
+  font-size: 14px;
+  font-family: inherit;
+  color: var(--bi-text);
+  background: white;
+  transition: all 0.15s;
+}
+
+.felt-input:hover {
+  border-color: var(--bi-lightblue);
+}
+
+.felt-input:focus {
+  outline: none;
+  border-color: var(--bi-lightblue);
+  box-shadow: 0 0 0 3px rgba(77, 188, 198, 0.15);
+}
+
+.felt-input.changed {
+  border-color: var(--bi-warning);
+  background: #fffaf3;
+}
+
+.felt-input[readonly] {
+  background: var(--bi-bg-page);
+  color: var(--bi-text-muted);
+  cursor: not-allowed;
+}
+
+/* Action-bar i bunden af formular */
+.felter-actions {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-top: 24px;
+  padding-top: 16px;
+  border-top: 1px solid var(--bi-border-light);
+  gap: 12px;
+}
+
+.changes-indicator {
+  font-size: 13px;
+  color: var(--bi-warning);
+  font-weight: 500;
+}
+
+.changes-indicator.saved {
+  color: var(--bi-success);
+}
+
+.changes-indicator.none {
+  color: var(--bi-text-faded);
+}
+
+/* Back-link i header */
+.back-link {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  color: white;
+  text-decoration: none;
+  margin-bottom: 12px;
+  font-size: 14px;
+  opacity: 0.9;
+}
+
+.back-link:hover {
+  opacity: 1;
+}
+
+/* Status-banners */
+.status-banner {
+  padding: 12px 16px;
+  border-radius: 8px;
+  margin-bottom: 16px;
+  font-size: 14px;
+}
+
+.status-banner.error {
+  background: var(--bi-error-bg);
+  color: var(--bi-error);
+  border: 1px solid var(--bi-error);
+}
+
+.status-banner.processing {
+  background: var(--bi-bg-section);
+  color: var(--bi-darkblue);
+  border: 1px solid var(--bi-border);
+}
+
+.status-banner.success {
+  background: var(--bi-success-bg);
+  color: var(--bi-success);
+  border: 1px solid var(--bi-success);
+}
+
+/* Konfidens-badge */
+.konfidens-badge {
+  display: inline-block;
+  padding: 3px 10px;
+  border-radius: 4px;
+  font-size: 12px;
+  font-weight: 500;
+}
+
+.konfidens-hoj {
+  background: var(--bi-success-bg);
+  color: var(--bi-success);
+}
+
+.konfidens-medium {
+  background: var(--bi-warning-bg);
+  color: var(--bi-warning);
+}
+
+.konfidens-lav {
+  background: var(--bi-error-bg);
+  color: var(--bi-error);
+}
+
+/* === Mobile === */
+@media (max-width: 900px) {
+  .detail-container {
+    grid-template-columns: 1fr;
+  }
+  
+  .pdf-viewer, .image-viewer {
+    height: 50vh;
+  }
+  
+  .felt-rk {
+    grid-template-columns: 1fr;
+    gap: 4px;
+  }
+}
+
 @media (max-width: 640px) {
   header h1 {
     font-size: 22px;
