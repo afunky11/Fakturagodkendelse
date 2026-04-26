@@ -636,3 +636,130 @@ footer {
     padding: 12px;
   }
 }
+
+/* =====================================================
+   QR Modal
+   ===================================================== */
+
+.modal {
+  position: fixed;
+  inset: 0;
+  z-index: 100;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 20px;
+}
+
+.modal.hidden {
+  display: none;
+}
+
+.modal-overlay {
+  position: absolute;
+  inset: 0;
+  background: rgba(4, 47, 78, 0.5);
+  backdrop-filter: blur(4px);
+}
+
+.modal-content {
+  position: relative;
+  background: white;
+  border-radius: 16px;
+  padding: 32px 28px;
+  max-width: 440px;
+  width: 100%;
+  box-shadow: 0 8px 32px rgba(4, 47, 78, 0.2);
+  text-align: center;
+}
+
+.modal-close {
+  position: absolute;
+  top: 12px;
+  right: 12px;
+  background: transparent;
+  border: none;
+  font-size: 28px;
+  color: var(--bi-text-muted);
+  cursor: pointer;
+  width: 36px;
+  height: 36px;
+  border-radius: 8px;
+  line-height: 1;
+  font-family: inherit;
+}
+
+.modal-close:hover {
+  background: var(--bi-bg-section);
+  color: var(--bi-darkblue);
+}
+
+.modal-content h2 {
+  font-size: 22px;
+  font-weight: 600;
+  color: var(--bi-darkblue);
+  margin-bottom: 12px;
+}
+
+.modal-desc {
+  font-size: 14px;
+  color: var(--bi-text-muted);
+  line-height: 1.5;
+  margin-bottom: 24px;
+}
+
+.qr-container {
+  background: white;
+  border: 2px solid var(--bi-border);
+  border-radius: 12px;
+  padding: 20px;
+  margin: 0 auto 20px;
+  display: inline-block;
+  min-width: 240px;
+  min-height: 240px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.qr-container img,
+.qr-container canvas {
+  display: block;
+}
+
+.qr-loading {
+  color: var(--bi-text-faded);
+  font-size: 14px;
+}
+
+.qr-status {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 10px;
+  font-size: 14px;
+  color: var(--bi-darkblue);
+  background: var(--bi-bg-section);
+  padding: 12px 16px;
+  border-radius: 8px;
+  margin-bottom: 12px;
+}
+
+.qr-status.received {
+  background: var(--bi-success-bg);
+  color: var(--bi-success);
+}
+
+.qr-status.received .spinner {
+  display: none;
+}
+
+.qr-url-fallback {
+  font-size: 11px;
+  color: var(--bi-text-faded);
+  word-break: break-all;
+  padding: 8px;
+  background: var(--bi-bg-page);
+  border-radius: 4px;
+  font-family: monospace;
+}
