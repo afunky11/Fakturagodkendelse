@@ -2,18 +2,15 @@
    BankInvest farvepalette + Work Sans
    ===================================================== */
 :root {
-  /* Primære farver */
   --bi-darkblue: #042f4e;
   --bi-darkblue-hover: #0a4670;
   --bi-lightblue: #4dbcc6;
   --bi-lightblue-hover: #6acdd6;
   
-  /* Baggrunde */
   --bi-bg-page: #f4fafe;
   --bi-bg-card: #ffffff;
   --bi-bg-section: #E3F3FD;
   
-  /* Status */
   --bi-success: #63866C;
   --bi-success-bg: #d4e2cb;
   --bi-warning: #d4824a;
@@ -21,17 +18,14 @@
   --bi-error: #cc7977;
   --bi-error-bg: #f5d4d3;
   
-  /* Tekst */
   --bi-text: #042f4e;
   --bi-text-muted: #5a7a92;
   --bi-text-faded: #94a3b8;
   
-  /* Linjer */
   --bi-border: #d1e4f0;
   --bi-border-light: #e8f1f8;
 }
 
-/* === Reset === */
 * {
   margin: 0;
   padding: 0;
@@ -47,33 +41,76 @@ body {
   flex-direction: column;
 }
 
-/* === Header === */
+/* === Header med logo === */
 header {
-  background: var(--bi-darkblue);
-  color: white;
-  padding: 24px 20px;
-  text-align: center;
+  background: white;
+  border-bottom: 1px solid var(--bi-border);
+  padding: 16px 24px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 24px;
 }
 
-header h1 {
-  font-size: 28px;
-  margin-bottom: 4px;
+.header-left {
+  display: flex;
+  align-items: center;
+  gap: 20px;
+  flex-wrap: wrap;
+}
+
+.logo {
+  height: 32px;
+  width: auto;
+}
+
+.header-divider {
+  width: 1px;
+  height: 32px;
+  background: var(--bi-border);
+}
+
+.header-titles h1 {
+  font-size: 20px;
   font-weight: 600;
+  color: var(--bi-darkblue);
+  margin: 0;
 }
 
-.subtitle {
+.header-titles .subtitle {
+  font-size: 13px;
+  color: var(--bi-text-muted);
+  margin: 0;
+}
+
+.back-link {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  color: var(--bi-darkblue);
+  text-decoration: none;
   font-size: 14px;
-  opacity: 0.85;
-  color: var(--bi-lightblue);
+  font-weight: 500;
+  padding: 8px 12px;
+  border-radius: 6px;
+  transition: background 0.15s;
+}
+
+.back-link:hover {
+  background: var(--bi-bg-section);
 }
 
 /* === Main layout === */
 main {
   flex: 1;
-  max-width: 1000px;
+  max-width: 1400px;
   width: 100%;
   margin: 0 auto;
   padding: 24px 16px;
+}
+
+main.narrow {
+  max-width: 1000px;
 }
 
 section {
@@ -179,11 +216,6 @@ section {
 
 .btn-tertiary:hover:not(:disabled) {
   background: var(--bi-border-light);
-}
-
-.btn-success {
-  background: var(--bi-success);
-  color: white;
 }
 
 .btn-icon {
@@ -299,25 +331,10 @@ section {
   white-space: nowrap;
 }
 
-.status-uploaded {
-  background: var(--bi-warning-bg);
-  color: var(--bi-warning);
-}
-
-.status-extracting {
-  background: var(--bi-bg-section);
-  color: var(--bi-darkblue);
-}
-
-.status-extracted {
-  background: var(--bi-success-bg);
-  color: var(--bi-success);
-}
-
-.status-extraction_failed {
-  background: var(--bi-error-bg);
-  color: var(--bi-error);
-}
+.status-uploaded { background: var(--bi-warning-bg); color: var(--bi-warning); }
+.status-extracting { background: var(--bi-bg-section); color: var(--bi-darkblue); }
+.status-extracted { background: var(--bi-success-bg); color: var(--bi-success); }
+.status-extraction_failed { background: var(--bi-error-bg); color: var(--bi-error); }
 
 .loading, .empty {
   text-align: center;
@@ -326,7 +343,6 @@ section {
   font-size: 14px;
 }
 
-/* === Footer === */
 footer {
   text-align: center;
   padding: 20px;
@@ -335,15 +351,13 @@ footer {
 }
 
 /* =====================================================
-   Detaljeside
+   Detaljeside - to kolonner: PDF + felter
    ===================================================== */
 
 .detail-container {
   display: grid;
   grid-template-columns: 1fr 1fr;
   gap: 20px;
-  max-width: 1400px;
-  margin: 0 auto;
   align-items: start;
 }
 
@@ -385,18 +399,76 @@ footer {
   color: var(--bi-darkblue);
 }
 
-/* Felt-grupper */
+/* === Sektion - opdeling i bilagsspecifik / leverandørdata === */
+
+.felt-sektion {
+  margin-bottom: 28px;
+  padding: 16px;
+  border-radius: 8px;
+  border: 1px solid var(--bi-border-light);
+}
+
+.felt-sektion.bilag {
+  background: var(--bi-bg-page);
+  border-color: var(--bi-border);
+}
+
+.felt-sektion.leverandor {
+  background: white;
+  border-color: var(--bi-border-light);
+}
+
+.felt-sektion-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 16px;
+  padding-bottom: 8px;
+  border-bottom: 1px solid var(--bi-border-light);
+}
+
+.felt-sektion-titel {
+  font-size: 14px;
+  font-weight: 600;
+  color: var(--bi-darkblue);
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.felt-sektion-titel .ikon {
+  font-size: 16px;
+}
+
+.felt-sektion-tag {
+  font-size: 11px;
+  background: var(--bi-bg-section);
+  color: var(--bi-darkblue);
+  padding: 2px 8px;
+  border-radius: 4px;
+  text-transform: none;
+  letter-spacing: 0;
+  font-weight: 500;
+}
+
+/* === Felt-grupper indenfor sektion === */
 .felt-gruppe {
-  margin-bottom: 24px;
+  margin-bottom: 16px;
+}
+
+.felt-gruppe:last-child {
+  margin-bottom: 0;
 }
 
 .felt-gruppe-titel {
-  font-size: 12px;
+  font-size: 11px;
   font-weight: 600;
   color: var(--bi-text-muted);
   text-transform: uppercase;
-  letter-spacing: 0.8px;
-  margin-bottom: 12px;
+  letter-spacing: 0.6px;
+  margin-bottom: 8px;
 }
 
 .felt-rk {
@@ -404,12 +476,7 @@ footer {
   grid-template-columns: 140px 1fr;
   align-items: center;
   gap: 12px;
-  padding: 8px 0;
-  border-bottom: 1px solid var(--bi-border-light);
-}
-
-.felt-rk:last-child {
-  border-bottom: none;
+  padding: 6px 0;
 }
 
 .felt-label {
@@ -419,7 +486,7 @@ footer {
 
 .felt-input {
   width: 100%;
-  padding: 8px 10px;
+  padding: 7px 10px;
   border: 1px solid var(--bi-border);
   border-radius: 6px;
   font-size: 14px;
@@ -450,7 +517,7 @@ footer {
   cursor: not-allowed;
 }
 
-/* Action-bar i bunden af formular */
+/* === Action-bar i bunden af formular === */
 .felter-actions {
   display: flex;
   justify-content: space-between;
@@ -463,35 +530,14 @@ footer {
 
 .changes-indicator {
   font-size: 13px;
-  color: var(--bi-warning);
   font-weight: 500;
 }
 
-.changes-indicator.saved {
-  color: var(--bi-success);
-}
+.changes-indicator.none { color: var(--bi-text-faded); }
+.changes-indicator { color: var(--bi-warning); }
+.changes-indicator.saved { color: var(--bi-success); }
 
-.changes-indicator.none {
-  color: var(--bi-text-faded);
-}
-
-/* Back-link i header */
-.back-link {
-  display: inline-flex;
-  align-items: center;
-  gap: 6px;
-  color: white;
-  text-decoration: none;
-  margin-bottom: 12px;
-  font-size: 14px;
-  opacity: 0.9;
-}
-
-.back-link:hover {
-  opacity: 1;
-}
-
-/* Status-banners */
+/* === Status-banners === */
 .status-banner {
   padding: 12px 16px;
   border-radius: 8px;
@@ -517,7 +563,7 @@ footer {
   border: 1px solid var(--bi-success);
 }
 
-/* Konfidens-badge */
+/* === Konfidens-badge === */
 .konfidens-badge {
   display: inline-block;
   padding: 3px 10px;
@@ -526,20 +572,9 @@ footer {
   font-weight: 500;
 }
 
-.konfidens-hoj {
-  background: var(--bi-success-bg);
-  color: var(--bi-success);
-}
-
-.konfidens-medium {
-  background: var(--bi-warning-bg);
-  color: var(--bi-warning);
-}
-
-.konfidens-lav {
-  background: var(--bi-error-bg);
-  color: var(--bi-error);
-}
+.konfidens-hoj { background: var(--bi-success-bg); color: var(--bi-success); }
+.konfidens-medium { background: var(--bi-warning-bg); color: var(--bi-warning); }
+.konfidens-lav { background: var(--bi-error-bg); color: var(--bi-error); }
 
 /* === Mobile === */
 @media (max-width: 900px) {
@@ -558,8 +593,15 @@ footer {
 }
 
 @media (max-width: 640px) {
-  header h1 {
-    font-size: 22px;
+  header {
+    padding: 12px 16px;
+    flex-direction: column;
+    gap: 12px;
+    align-items: flex-start;
+  }
+  
+  .header-titles h1 {
+    font-size: 18px;
   }
   
   section {
@@ -576,5 +618,9 @@ footer {
   
   .btn {
     width: 100%;
+  }
+  
+  .felt-sektion {
+    padding: 12px;
   }
 }
