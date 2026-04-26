@@ -37,10 +37,9 @@
             </label>
             <input type="file" id="file-input" accept="application/pdf,image/*" hidden>
             
-            <label for="camera-input" class="btn btn-secondary">
-              📷 Tag billede
-            </label>
-            <input type="file" id="camera-input" accept="image/*" capture="environment" hidden>
+            <button type="button" id="qr-btn" class="btn btn-secondary">
+              📱 Tag billede med telefon
+            </button>
           </div>
           <p class="dropzone-hint">PDF, JPG eller PNG · max 25 MB</p>
         </div>
@@ -63,11 +62,33 @@
     </section>
   </main>
 
+  <!-- QR Modal -->
+  <div id="qr-modal" class="modal hidden">
+    <div class="modal-overlay" id="modal-overlay"></div>
+    <div class="modal-content">
+      <button class="modal-close" id="modal-close">×</button>
+      <h2>Scan med telefonen</h2>
+      <p class="modal-desc">Åbn kameraet på din telefon og scan QR-koden. Tag derefter billedet af fakturaen – det dukker op her automatisk.</p>
+      
+      <div id="qr-container" class="qr-container">
+        <div class="qr-loading">Genererer QR-kode...</div>
+      </div>
+      
+      <div id="qr-status" class="qr-status">
+        <div class="spinner"></div>
+        <span>Venter på fil fra telefon...</span>
+      </div>
+      
+      <p class="qr-url-fallback" id="qr-url-fallback"></p>
+    </div>
+  </div>
+
   <footer>
     <p class="footer-text">PoC – ikke til produktion. Ingen login, åben adgang.</p>
   </footer>
 
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+  <script src="https://cdn.jsdelivr.net/npm/qrcodejs@1.0.0/qrcode.min.js"></script>
   <script src="config.js"></script>
   <script src="app.js"></script>
 </body>
