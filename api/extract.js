@@ -3,12 +3,6 @@
 // Vercel Serverless Function
 // Kalder Mistral API for at ekstraktere felter fra faktura
 // =====================================================
-//
-// Miljøvariabler der skal sættes i Vercel:
-// - MISTRAL_API_KEY: Mistral API-nøgle
-// - SUPABASE_URL: Supabase projekt URL
-// - SUPABASE_SERVICE_ROLE_KEY: Service role key (omgår RLS)
-// =====================================================
 
 export default async function handler(req, res) {
   if (req.method !== 'POST') {
@@ -33,26 +27,18 @@ export default async function handler(req, res) {
   try {
     console.log('Starter ekstraktion for fakturaId:', fakturaId, 'filePath:', filePath);
     
-    // 1. Sæt status til 'extracting'
     await updateFaktura(SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY, fakturaId, {
       status: 'extracting'
     });
 
-    // 2. Hent fil fra Supabase Storage som signeret URL
     console.log('Genererer signed URL...');
-    const signedUrl = await getSignedUrl(
-      SUPABASE_URL, 
-      SUPABASE_SERVICE_ROLE_KEY, 
-      filePath
-    );
+    const signedUrl = await getSignedUrl(SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY, filePath);
     console.log('Signed URL OK');
 
-    // 3. Kald Mistral med fil-URL
     console.log('Kalder Mistral...');
     const ekstraktion = await kaldMistral(MISTRAL_API_KEY, signedUrl, fileType);
     console.log('Mistral OK');
 
-    // 4. Opdater faktura med ekstraherede felter
     await updateFaktura(SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY, fakturaId, {
       ...ekstraktion.felter,
       llm_raa_svar: ekstraktion.raaSvar,
@@ -110,14 +96,32 @@ JSON-skema:
   "betalingskonto_iban": "string eller null",
   "betalingskonto_bic": "string eller null (SWIFT-kode)",
   "betalingsreference": "string eller null (FI-kode, OCR-linje, fakturareference)",
-  "konfidens": "tal mellem 0 og 1 der angiver hvor sikker du er på ekstraktionen samlet set"
+  "bogforingsbeskrivelse": "MAX 30 TEGN kort beskrivelse til bogføring",
+  "bogforingskonto": "string eller null - kun hvis fakturaen tydeligt indeholder en kontonummer-reference",
+  "konfidens": "tal mellem 0 og 1"
 }
 
 VIGTIGT:
 - Tal skal være rigtige tal (1234.56), ikke strings ("1.234,56")
 - Datoer SKAL være YYYY-MM-DD format
 - CVR er altid 8 cifre, kun tal
-- Hvis du ikke kan finde et felt, brug null - GÆT IKKE`;
+- Hvis du ikke kan finde et felt, brug null - GÆT IKKE
+
+OM bogforingsbeskrivelse:
+- Kort, sigende beskrivelse til kontering (MAX 30 TEGN inkl. mellemrum)
+- Format: "[ydelse] [periode]" eller "[ydelse] [referencepunkt]"
+- Eksempler:
+  * "Husleje Q4 2026"
+  * "Revision 2025"
+  * "Depotgebyr nov 26"
+  * "Konsulent okt 26"
+- HOLD DIG STRENGT UNDER 30 TEGN - tæl mellemrum med
+
+OM bogforingskonto:
+- Returnér KUN hvis fakturaen utvetydigt henviser til en specifik kontonummer
+- Eksempler: hvis fakturaen siger "Bogføres på konto 6420" → returnér "6420"
+- I langt de fleste tilfælde er dette null - bogføringskonto besluttes af bogholderen, ikke af leverandøren
+- GÆT IKKE en konto baseret på fakturatypen`;
 
   const messages = [{
     role: 'user',
@@ -158,6 +162,18 @@ VIGTIGT:
     throw new Error('Mistral returnerede ikke gyldig JSON: ' + indhold.substring(0, 200));
   }
 
+  let beskrivelse = cleanString(parsed.bogforingsbeskrivelse);
+  if (beskrivelse && beskrivelse.length > 30) {
+    console.warn(`Mistral returnerede beskrivelse på ${beskrivelse.length} tegn, klipper til 30`);
+    beskrivelse = beskrivelse.substring(0, 30).trim();
+  }
+
+  let konto = cleanString(parsed.bogforingskonto);
+  if (konto && konto.length > 20) {
+    console.warn(`Mistral returnerede kontonummer på ${konto.length} tegn, klipper til 20`);
+    konto = konto.substring(0, 20).trim();
+  }
+
   const felter = {
     leverandoer_cvr: cleanString(parsed.leverandoer_cvr),
     leverandoer_navn: cleanString(parsed.leverandoer_navn),
@@ -176,6 +192,8 @@ VIGTIGT:
     betalingskonto_iban: cleanString(parsed.betalingskonto_iban),
     betalingskonto_bic: cleanString(parsed.betalingskonto_bic),
     betalingsreference: cleanString(parsed.betalingsreference),
+    bogforingsbeskrivelse: beskrivelse,
+    bogforingskonto: konto,
     llm_konfidensscore: cleanNumber(parsed.konfidens)
   };
 
@@ -190,9 +208,7 @@ VIGTIGT:
 // =====================================================
 
 async function getSignedUrl(supabaseUrl, serviceKey, filePath) {
-  // URL-encode filePath i tilfælde af specialtegn
   const encodedPath = encodeURIComponent(filePath);
-  
   const url = `${supabaseUrl}/storage/v1/object/sign/fakturaer/${encodedPath}`;
   
   console.log('POST til:', url);
@@ -216,14 +232,12 @@ async function getSignedUrl(supabaseUrl, serviceKey, filePath) {
   const data = await response.json();
   console.log('Signed URL response keys:', Object.keys(data));
   
-  // Supabase returnerer enten 'signedURL' (gammel) eller 'signedUrl' (nyere) - tjek begge
   const signedPath = data.signedURL || data.signedUrl;
   
   if (!signedPath) {
     throw new Error('Signed URL mangler i respons: ' + JSON.stringify(data));
   }
   
-  // signedPath starter med '/' - byg den fulde URL
   return `${supabaseUrl}/storage/v1${signedPath.startsWith('/') ? signedPath : '/' + signedPath}`;
 }
 
