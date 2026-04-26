@@ -1,4 +1,3 @@
-
 // =====================================================
 // /api/extract.js
 // Vercel Serverless Function
@@ -9,13 +8,9 @@
 // - MISTRAL_API_KEY: Mistral API-nøgle
 // - SUPABASE_URL: Supabase projekt URL
 // - SUPABASE_SERVICE_ROLE_KEY: Service role key (omgår RLS)
-//
-// Bemærk: SERVICE_ROLE bruges fordi vi opdaterer på vegne af brugeren
-// uden at have et auth-token (PoC kører uden login).
 // =====================================================
 
 export default async function handler(req, res) {
-  // Kun POST
   if (req.method !== 'POST') {
     return res.status(405).json({ error: 'Method not allowed' });
   }
@@ -26,31 +21,36 @@ export default async function handler(req, res) {
     return res.status(400).json({ error: 'Mangler fakturaId eller filePath' });
   }
 
-  // Tjek miljøvariabler
   const MISTRAL_API_KEY = process.env.MISTRAL_API_KEY;
   const SUPABASE_URL = process.env.SUPABASE_URL;
   const SUPABASE_SERVICE_ROLE_KEY = process.env.SUPABASE_SERVICE_ROLE_KEY;
 
   if (!MISTRAL_API_KEY || !SUPABASE_URL || !SUPABASE_SERVICE_ROLE_KEY) {
     console.error('Mangler miljøvariabler');
-    return res.status(500).json({ error: 'Server misconfigured' });
+    return res.status(500).json({ error: 'Server misconfigured - missing env vars' });
   }
 
   try {
+    console.log('Starter ekstraktion for fakturaId:', fakturaId, 'filePath:', filePath);
+    
     // 1. Sæt status til 'extracting'
     await updateFaktura(SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY, fakturaId, {
       status: 'extracting'
     });
 
     // 2. Hent fil fra Supabase Storage som signeret URL
+    console.log('Genererer signed URL...');
     const signedUrl = await getSignedUrl(
       SUPABASE_URL, 
       SUPABASE_SERVICE_ROLE_KEY, 
       filePath
     );
+    console.log('Signed URL OK');
 
     // 3. Kald Mistral med fil-URL
+    console.log('Kalder Mistral...');
     const ekstraktion = await kaldMistral(MISTRAL_API_KEY, signedUrl, fileType);
+    console.log('Mistral OK');
 
     // 4. Opdater faktura med ekstraherede felter
     await updateFaktura(SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY, fakturaId, {
@@ -67,7 +67,6 @@ export default async function handler(req, res) {
   } catch (error) {
     console.error('Ekstraktionsfejl:', error);
     
-    // Markér faktura som fejlet
     try {
       await updateFaktura(SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY, fakturaId, {
         status: 'extraction_failed',
@@ -159,7 +158,6 @@ VIGTIGT:
     throw new Error('Mistral returnerede ikke gyldig JSON: ' + indhold.substring(0, 200));
   }
 
-  // Map til database-felter
   const felter = {
     leverandoer_cvr: cleanString(parsed.leverandoer_cvr),
     leverandoer_navn: cleanString(parsed.leverandoer_navn),
@@ -188,29 +186,50 @@ VIGTIGT:
 }
 
 // =====================================================
-// Supabase-hjælpere (REST API direkte for at undgå dependencies)
+// Supabase Storage - signeret URL
 // =====================================================
 
 async function getSignedUrl(supabaseUrl, serviceKey, filePath) {
-  const response = await fetch(
-    `${supabaseUrl}/storage/v1/object/sign/fakturaer/${filePath}`,
-    {
-      method: 'POST',
-      headers: {
-        'Authorization': `Bearer ${serviceKey}`,
-        'Content-Type': 'application/json'
-      },
-      body: JSON.stringify({ expiresIn: 600 }) // 10 minutter er rigeligt
-    }
-  );
+  // URL-encode filePath i tilfælde af specialtegn
+  const encodedPath = encodeURIComponent(filePath);
+  
+  const url = `${supabaseUrl}/storage/v1/object/sign/fakturaer/${encodedPath}`;
+  
+  console.log('POST til:', url);
+  
+  const response = await fetch(url, {
+    method: 'POST',
+    headers: {
+      'Authorization': `Bearer ${serviceKey}`,
+      'apikey': serviceKey,
+      'Content-Type': 'application/json'
+    },
+    body: JSON.stringify({ expiresIn: 600 })
+  });
 
   if (!response.ok) {
-    throw new Error(`Kunne ikke generere signeret URL: ${response.status}`);
+    const errorBody = await response.text();
+    console.error('Signed URL fejl-respons:', errorBody);
+    throw new Error(`Kunne ikke generere signeret URL (${response.status}): ${errorBody}`);
   }
 
   const data = await response.json();
-  return `${supabaseUrl}/storage/v1${data.signedURL}`;
+  console.log('Signed URL response keys:', Object.keys(data));
+  
+  // Supabase returnerer enten 'signedURL' (gammel) eller 'signedUrl' (nyere) - tjek begge
+  const signedPath = data.signedURL || data.signedUrl;
+  
+  if (!signedPath) {
+    throw new Error('Signed URL mangler i respons: ' + JSON.stringify(data));
+  }
+  
+  // signedPath starter med '/' - byg den fulde URL
+  return `${supabaseUrl}/storage/v1${signedPath.startsWith('/') ? signedPath : '/' + signedPath}`;
 }
+
+// =====================================================
+// Supabase REST - opdater faktura
+// =====================================================
 
 async function updateFaktura(supabaseUrl, serviceKey, fakturaId, fields) {
   const response = await fetch(
@@ -250,7 +269,6 @@ function cleanNumber(value) {
 
 function cleanDate(value) {
   if (!value) return null;
-  // Forventer YYYY-MM-DD format
   if (/^\d{4}-\d{2}-\d{2}$/.test(value)) return value;
   return null;
 }
