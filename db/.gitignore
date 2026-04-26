@@ -1,0 +1,19 @@
+# Dependencies (vi har ingen, men for fremtiden)
+node_modules/
+
+# Vercel
+.vercel
+
+# Lokal env (HVIS du nogensinde kører lokalt - sæt aldrig i git)
+.env
+.env.local
+.env*.local
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Editor
+.vscode/
+.idea/
+*.swp
