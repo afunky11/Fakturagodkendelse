@@ -1,11 +1,10 @@
-
 // =====================================================
 // app.js - Forsidens logik
 // Upload, ekstraktion og visning af fakturaliste
 // =====================================================
 
-// Init Supabase klient
-const supabase = window.supabase.createClient(
+// Init Supabase klient (bruger 'db' for at undgå navnekonflikt med window.supabase)
+const db = window.supabase.createClient(
   SUPABASE_URL,
   SUPABASE_PUBLISHABLE_KEY
 );
@@ -50,6 +49,10 @@ dropzone.addEventListener('drop', (e) => {
   }
 });
 
+// Forhindre browseren i at åbne filer der dropbes udenfor dropzone
+window.addEventListener('dragover', (e) => e.preventDefault());
+window.addEventListener('drop', (e) => e.preventDefault());
+
 // Filvælger
 fileInput.addEventListener('change', (e) => {
   if (e.target.files.length > 0) {
@@ -72,11 +75,12 @@ refreshBtn.addEventListener('click', loadFakturaer);
 // =====================================================
 
 async function handleFile(file) {
+  console.log('handleFile kaldt med:', file.name, file.type, file.size);
+  
   // Validering
-  const allowedTypes = ['application/pdf', 'image/jpeg', 'image/png', 'image/heic', 'image/heif'];
   const maxSize = 25 * 1024 * 1024; // 25 MB
   
-  if (!allowedTypes.includes(file.type) && !file.type.startsWith('image/')) {
+  if (!file.type.startsWith('image/') && file.type !== 'application/pdf') {
     alert('Ugyldig filtype. Brug PDF, JPG eller PNG.');
     return;
   }
@@ -94,7 +98,9 @@ async function handleFile(file) {
     const fileId = generateId();
     const filePath = `${fileId}.${fileExt}`;
     
-    const { data: uploadData, error: uploadError } = await supabase.storage
+    console.log('Uploader til Supabase Storage:', filePath);
+    
+    const { data: uploadData, error: uploadError } = await db.storage
       .from(SUPABASE_BUCKET)
       .upload(filePath, file, {
         contentType: file.type,
@@ -102,11 +108,12 @@ async function handleFile(file) {
       });
     
     if (uploadError) throw uploadError;
+    console.log('Upload OK:', uploadData);
     
     // 2. Opret række i fakturaer-tabellen
     showStatus('Gemmer i database...');
     
-    const { data: fakturaData, error: insertError } = await supabase
+    const { data: fakturaData, error: insertError } = await db
       .from('fakturaer')
       .insert({
         fil_sti: filePath,
@@ -119,6 +126,7 @@ async function handleFile(file) {
       .single();
     
     if (insertError) throw insertError;
+    console.log('DB-række oprettet:', fakturaData.id);
     
     // 3. Trigger ekstraktion via serverless function
     showStatus('Læser faktura med AI...');
@@ -171,7 +179,7 @@ async function loadFakturaer() {
   fakturaList.innerHTML = '<p class="loading">Indlæser...</p>';
   
   try {
-    const { data, error } = await supabase
+    const { data, error } = await db
       .from('fakturaer')
       .select('*')
       .order('oprettet_dato', { ascending: false })
