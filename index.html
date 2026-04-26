@@ -1,15 +1,20 @@
-
 <!DOCTYPE html>
 <html lang="da">
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Fakturagodkendelse - PoC</title>
+  <title>Fakturagodkendelse</title>
+  
+  <!-- Work Sans font -->
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Work+Sans:wght@400;500;600;700&display=swap" rel="stylesheet">
+  
   <link rel="stylesheet" href="styles.css">
 </head>
 <body>
   <header>
-    <h1>📄 Fakturagodkendelse</h1>
+    <h1>Fakturagodkendelse</h1>
     <p class="subtitle">PoC – upload faktura og få den læst af AI</p>
   </header>
 
@@ -18,7 +23,7 @@
     <section class="upload-section">
       <div id="dropzone" class="dropzone">
         <div class="dropzone-content">
-          <div class="upload-icon">⬆️</div>
+          <div class="upload-icon">📄</div>
           <p class="dropzone-text">Træk en faktura hertil</p>
           <p class="dropzone-or">eller</p>
           <div class="upload-buttons">
@@ -36,7 +41,6 @@
         </div>
       </div>
 
-      <!-- Status under upload/processering -->
       <div id="upload-status" class="upload-status hidden">
         <div class="spinner"></div>
         <p id="status-text">Uploader fil...</p>
@@ -59,7 +63,6 @@
     <p class="footer-text">PoC – ikke til produktion. Ingen login, åben adgang.</p>
   </footer>
 
-  <!-- Supabase JS klient -->
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
   <script src="config.js"></script>
   <script src="app.js"></script>
