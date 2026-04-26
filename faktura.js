@@ -1,191 +1,250 @@
+// =====================================================
+// faktura.js - Detaljesidens logik
+// Viser PDF/billede + ekstraherede felter
+// =====================================================
 
-<!DOCTYPE html>
-<html lang="da">
-<head>
-  <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Faktura - Fakturagodkendelse</title>
-  <link rel="stylesheet" href="styles.css">
-  <style>
-    /* Detaljeside-specifikke styles */
-    .detail-container {
-      display: grid;
-      grid-template-columns: 1fr 1fr;
-      gap: 20px;
-      max-width: 1400px;
-      margin: 0 auto;
+// Init Supabase klient (bruger 'db' for at undgå navnekonflikt med window.supabase)
+const db = window.supabase.createClient(
+  SUPABASE_URL,
+  SUPABASE_PUBLISHABLE_KEY
+);
+
+// DOM
+const loadingEl = document.getElementById('loading');
+const errorEl = document.getElementById('error');
+const errorTextEl = document.getElementById('error-text');
+const contentEl = document.getElementById('content');
+const fileViewerContainer = document.getElementById('file-viewer-container');
+const felterContent = document.getElementById('felter-content');
+const pageTitle = document.getElementById('page-title');
+const pageSubtitle = document.getElementById('page-subtitle');
+
+// Hent ID fra URL
+const urlParams = new URLSearchParams(window.location.search);
+const fakturaId = urlParams.get('id');
+
+if (!fakturaId) {
+  showError('Ingen faktura-ID i URL');
+} else {
+  loadFaktura();
+}
+
+// =====================================================
+// Indlæs faktura
+// =====================================================
+
+async function loadFaktura() {
+  try {
+    // Hent faktura fra DB
+    const { data: faktura, error } = await db
+      .from('fakturaer')
+      .select('*')
+      .eq('id', fakturaId)
+      .single();
+    
+    if (error) throw error;
+    if (!faktura) throw new Error('Faktura ikke fundet');
+    
+    // Hent signeret URL til filen
+    const { data: urlData, error: urlError } = await db.storage
+      .from(SUPABASE_BUCKET)
+      .createSignedUrl(faktura.fil_sti, 3600); // 1 time
+    
+    if (urlError) throw urlError;
+    
+    // Render
+    renderFaktura(faktura, urlData.signedUrl);
+    
+    // Hvis status er 'extracting', poll for opdateringer
+    if (faktura.status === 'extracting') {
+      pollForUpdates();
     }
     
-    .pdf-panel, .felter-panel {
-      background: white;
-      border-radius: 12px;
-      padding: 20px;
-      box-shadow: 0 2px 8px rgba(0,0,0,0.06);
-    }
+  } catch (error) {
+    console.error('Fejl:', error);
+    showError(error.message);
+  }
+}
+
+// =====================================================
+// Render
+// =====================================================
+
+function renderFaktura(faktura, fileUrl) {
+  loadingEl.classList.add('hidden');
+  contentEl.classList.remove('hidden');
+  
+  // Header
+  const titel = faktura.leverandoer_navn || faktura.fil_navn || 'Faktura';
+  pageTitle.textContent = `📄 ${titel}`;
+  
+  const status = {
+    'uploaded': 'Uploadet, venter på AI',
+    'extracting': '🤖 AI læser fakturaen...',
+    'extracted': 'Læst af AI',
+    'extraction_failed': '❌ AI-læsning fejlede'
+  }[faktura.status] || faktura.status;
+  pageSubtitle.textContent = status;
+  
+  // Status-banner ved fejl
+  if (faktura.status === 'extraction_failed') {
+    errorEl.classList.remove('hidden');
+    errorTextEl.textContent = faktura.status_besked || 'AI kunne ikke læse fakturaen';
+  } else if (faktura.status === 'extracting') {
+    showProcessingBanner();
+  }
+  
+  // PDF eller billede
+  renderFile(faktura, fileUrl);
+  
+  // Felter
+  renderFelter(faktura);
+}
+
+function renderFile(faktura, fileUrl) {
+  if (faktura.fil_type === 'application/pdf') {
+    fileViewerContainer.innerHTML = `
+      <iframe src="${fileUrl}" class="pdf-viewer" title="Faktura PDF"></iframe>
+    `;
+  } else {
+    fileViewerContainer.innerHTML = `
+      <img src="${fileUrl}" alt="Faktura" class="image-viewer">
+    `;
+  }
+}
+
+function renderFelter(faktura) {
+  const konfidens = faktura.llm_konfidensscore;
+  let konfidensBadge = '';
+  if (konfidens !== null && konfidens !== undefined) {
+    const klasse = konfidens >= 0.8 ? 'konfidens-hoj' : konfidens >= 0.5 ? 'konfidens-medium' : 'konfidens-lav';
+    konfidensBadge = `<span class="konfidens-badge ${klasse}">Konfidens: ${Math.round(konfidens * 100)}%</span>`;
+  }
+  
+  felterContent.innerHTML = `
+    ${konfidensBadge ? `<div style="margin-bottom: 16px;">${konfidensBadge}</div>` : ''}
     
-    .pdf-viewer {
-      width: 100%;
-      height: 80vh;
-      border: 1px solid #e2e8f0;
-      border-radius: 8px;
-      background: #f8fafc;
-    }
+    <div class="felt-gruppe">
+      <div class="felt-gruppe-titel">Leverandør</div>
+      ${felt('Navn', faktura.leverandoer_navn)}
+      ${felt('CVR', faktura.leverandoer_cvr)}
+      ${felt('Adresse', faktura.leverandoer_adresse)}
+    </div>
     
-    .image-viewer {
-      width: 100%;
-      max-height: 80vh;
-      object-fit: contain;
-      border: 1px solid #e2e8f0;
-      border-radius: 8px;
-      background: #f8fafc;
-    }
+    <div class="felt-gruppe">
+      <div class="felt-gruppe-titel">Faktura</div>
+      ${felt('Fakturanummer', faktura.fakturanummer)}
+      ${felt('Fakturadato', formatDato(faktura.fakturadato))}
+      ${felt('Forfaldsdato', formatDato(faktura.forfaldsdato))}
+    </div>
     
-    .felter-panel h2 {
-      font-size: 18px;
-      margin-bottom: 16px;
-      padding-bottom: 12px;
-      border-bottom: 1px solid #e2e8f0;
-    }
+    <div class="felt-gruppe">
+      <div class="felt-gruppe-titel">Beløb</div>
+      ${felt('Beløb ekskl. moms', formatBelob(faktura.belob_eksk_moms, faktura.valuta))}
+      ${felt('Moms (' + (faktura.momssats !== null ? faktura.momssats + '%' : '?') + ')', formatBelob(faktura.momsbelob, faktura.valuta))}
+      ${felt('Beløb inkl. moms', formatBelob(faktura.belob_inkl_moms, faktura.valuta))}
+      ${felt('Valuta', faktura.valuta)}
+    </div>
     
-    .felt-gruppe {
-      margin-bottom: 20px;
-    }
-    
-    .felt-gruppe-titel {
-      font-size: 13px;
-      font-weight: 600;
-      color: #64748b;
-      text-transform: uppercase;
-      letter-spacing: 0.5px;
-      margin-bottom: 10px;
-    }
-    
-    .felt {
-      display: flex;
-      justify-content: space-between;
-      padding: 8px 0;
-      border-bottom: 1px solid #f1f5f9;
-      font-size: 14px;
-    }
-    
-    .felt:last-child {
-      border-bottom: none;
-    }
-    
-    .felt-label {
-      color: #64748b;
-      flex-shrink: 0;
-      margin-right: 12px;
-    }
-    
-    .felt-vaerdi {
-      font-weight: 500;
-      text-align: right;
-      color: #1e293b;
-      word-break: break-word;
-    }
-    
-    .felt-vaerdi.tom {
-      color: #cbd5e0;
-      font-style: italic;
-      font-weight: normal;
-    }
-    
-    .back-link {
-      display: inline-flex;
-      align-items: center;
-      gap: 6px;
-      color: white;
-      text-decoration: none;
-      margin-bottom: 12px;
-      font-size: 14px;
-      opacity: 0.9;
-    }
-    
-    .back-link:hover {
-      opacity: 1;
-    }
-    
-    .status-banner {
-      padding: 12px 16px;
-      border-radius: 8px;
-      margin-bottom: 16px;
-      font-size: 14px;
-    }
-    
-    .status-banner.error {
-      background: #fee2e2;
-      color: #991b1b;
-      border: 1px solid #fecaca;
-    }
-    
-    .status-banner.processing {
-      background: #dbeafe;
-      color: #1e40af;
-      border: 1px solid #bfdbfe;
-    }
-    
-    .konfidens-badge {
-      display: inline-block;
-      padding: 2px 8px;
-      border-radius: 4px;
-      font-size: 12px;
-      margin-left: 8px;
-    }
-    
-    .konfidens-hoj { background: #d1fae5; color: #065f46; }
-    .konfidens-medium { background: #fef3c7; color: #92400e; }
-    .konfidens-lav { background: #fee2e2; color: #991b1b; }
-    
-    @media (max-width: 900px) {
-      .detail-container {
-        grid-template-columns: 1fr;
+    <div class="felt-gruppe">
+      <div class="felt-gruppe-titel">Betalingsoplysninger</div>
+      ${faktura.betalingskonto_iban 
+        ? felt('IBAN', faktura.betalingskonto_iban) + felt('BIC', faktura.betalingskonto_bic)
+        : felt('Reg.nr', faktura.betalingskonto_regnr) + felt('Kontonr', faktura.betalingskonto_kontonr)
       }
-      
-      .pdf-viewer, .image-viewer {
-        height: 50vh;
-      }
+      ${felt('Betalingsreference', faktura.betalingsreference)}
+    </div>
+    
+    <div class="felt-gruppe">
+      <div class="felt-gruppe-titel">Fil-info</div>
+      ${felt('Filnavn', faktura.fil_navn)}
+      ${felt('Uploadet', formatDatoTid(faktura.oprettet_dato))}
+    </div>
+  `;
+}
+
+function felt(label, vaerdi) {
+  const visning = vaerdi !== null && vaerdi !== undefined && vaerdi !== ''
+    ? `<span class="felt-vaerdi">${escapeHtml(String(vaerdi))}</span>`
+    : `<span class="felt-vaerdi tom">–</span>`;
+  
+  return `
+    <div class="felt">
+      <span class="felt-label">${label}</span>
+      ${visning}
+    </div>
+  `;
+}
+
+function showProcessingBanner() {
+  errorEl.className = 'status-banner processing';
+  errorEl.classList.remove('hidden');
+  errorTextEl.textContent = 'AI læser fakturaen, dette tager normalt 5-15 sekunder...';
+}
+
+function showError(message) {
+  loadingEl.classList.add('hidden');
+  errorEl.classList.remove('hidden');
+  errorTextEl.textContent = message;
+}
+
+// =====================================================
+// Polling for updates (når status er 'extracting')
+// =====================================================
+
+let pollCount = 0;
+const MAX_POLLS = 30; // 30 * 2 sek = 1 minut max
+
+async function pollForUpdates() {
+  if (pollCount >= MAX_POLLS) return;
+  pollCount++;
+  
+  await new Promise(r => setTimeout(r, 2000));
+  
+  try {
+    const { data, error } = await db
+      .from('fakturaer')
+      .select('status')
+      .eq('id', fakturaId)
+      .single();
+    
+    if (error) return;
+    
+    if (data.status !== 'extracting') {
+      // Status har ændret sig - genindlæs siden
+      window.location.reload();
+    } else {
+      pollForUpdates();
     }
-  </style>
-</head>
-<body>
-  <header>
-    <a href="index.html" class="back-link">← Tilbage til oversigt</a>
-    <h1 id="page-title">📄 Faktura</h1>
-    <p class="subtitle" id="page-subtitle">Indlæser...</p>
-  </header>
+  } catch (e) {
+    console.error('Polling fejl:', e);
+  }
+}
 
-  <main>
-    <div id="loading" class="loading" style="text-align: center; padding: 40px;">
-      Indlæser faktura...
-    </div>
-    
-    <div id="error" class="status-banner error hidden">
-      <strong>Fejl:</strong> <span id="error-text"></span>
-    </div>
-    
-    <div id="content" class="detail-container hidden">
-      <div class="pdf-panel">
-        <div id="file-viewer-container">
-          <!-- PDF eller billede sættes ind her -->
-        </div>
-      </div>
-      
-      <div class="felter-panel">
-        <h2>Ekstraherede felter</h2>
-        <div id="felter-content">
-          <!-- Felter sættes ind her -->
-        </div>
-      </div>
-    </div>
-  </main>
+// =====================================================
+// Hjælpefunktioner
+// =====================================================
 
-  <footer>
-    <p class="footer-text">PoC – ikke til produktion. Ingen login, åben adgang.</p>
-  </footer>
+function formatBelob(belob, valuta) {
+  if (belob === null || belob === undefined) return null;
+  return new Intl.NumberFormat('da-DK', {
+    minimumFractionDigits: 2,
+    maximumFractionDigits: 2
+  }).format(belob) + (valuta ? ' ' + valuta : '');
+}
 
-  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
-  <script src="config.js"></script>
-  <script src="faktura.js"></script>
-</body>
-</html>
+function formatDato(dato) {
+  if (!dato) return null;
+  return new Date(dato).toLocaleDateString('da-DK');
+}
+
+function formatDatoTid(dato) {
+  if (!dato) return null;
+  return new Date(dato).toLocaleString('da-DK');
+}
+
+function escapeHtml(text) {
+  const div = document.createElement('div');
+  div.textContent = text;
+  return div.innerHTML;
+}
