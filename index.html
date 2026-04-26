@@ -3,9 +3,8 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Fakturagodkendelse</title>
+  <title>Fakturagodkendelse - BankInvest</title>
   
-  <!-- Work Sans font -->
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Work+Sans:wght@400;500;600;700&display=swap" rel="stylesheet">
@@ -14,12 +13,17 @@
 </head>
 <body>
   <header>
-    <h1>Fakturagodkendelse</h1>
-    <p class="subtitle">PoC – upload faktura og få den læst af AI</p>
+    <div class="header-left">
+      <img src="logo.png" alt="BankInvest" class="logo">
+      <div class="header-divider"></div>
+      <div class="header-titles">
+        <h1>Fakturagodkendelse</h1>
+        <p class="subtitle">PoC – upload faktura og få den læst af AI</p>
+      </div>
+    </div>
   </header>
 
-  <main>
-    <!-- Upload-område -->
+  <main class="narrow">
     <section class="upload-section">
       <div id="dropzone" class="dropzone">
         <div class="dropzone-content">
@@ -47,7 +51,6 @@
       </div>
     </section>
 
-    <!-- Liste over fakturaer -->
     <section class="list-section">
       <div class="list-header">
         <h2>Fakturaer</h2>
