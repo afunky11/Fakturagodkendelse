@@ -34,6 +34,7 @@ const MAX_POLLS = 30;
 // Disse ændrer sig per faktura - skal udfyldes hver gang
 const FELTER_BILAG = [
   { gruppe: 'Bogføring', felt: 'bogforingsbeskrivelse', label: 'Beskrivelse', type: 'text', maxlength: 30 },
+  { gruppe: 'Bogføring', felt: 'bogforingskonto', label: 'Konto', type: 'text', maxlength: 20 },
   
   { gruppe: 'Faktura', felt: 'fakturanummer', label: 'Fakturanummer', type: 'text' },
   { gruppe: 'Faktura', felt: 'fakturadato', label: 'Fakturadato', type: 'date' },
