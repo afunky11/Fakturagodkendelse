@@ -1,8 +1,16 @@
+
 // =====================================================
-// app.js - Forsidens logik
-// Upload, ekstraktion og visning af fakturaliste
-// + QR-bridging fra mobil til PC
+// app.js - Forsidens logik (Bogholder-side)
 // =====================================================
+
+// Tjek bruger - omdiriger Godkender til godkend.html
+const bruger = hentAktuelBruger();
+if (bruger.rolle === 'Godkender') {
+  window.location.href = 'godkend.html';
+}
+
+// Render bruger-vælger
+renderBrugerVaelger('bruger-vaelger-container');
 
 const db = window.supabase.createClient(
   SUPABASE_URL,
@@ -19,7 +27,6 @@ const statusText = document.getElementById('status-text');
 const fakturaList = document.getElementById('faktura-list');
 const refreshBtn = document.getElementById('refresh-btn');
 
-// QR-modal elementer
 const qrBtn = document.getElementById('qr-btn');
 const qrModal = document.getElementById('qr-modal');
 const modalClose = document.getElementById('modal-close');
@@ -28,12 +35,11 @@ const qrContainer = document.getElementById('qr-container');
 const qrStatus = document.getElementById('qr-status');
 const qrUrlFallback = document.getElementById('qr-url-fallback');
 
-// QR-state
 let qrPollingInterval = null;
 let currentSessionToken = null;
 
 // =====================================================
-// Event listeners - upload
+// Upload event listeners
 // =====================================================
 
 dropzone.addEventListener('click', (e) => {
@@ -53,54 +59,36 @@ dropzone.addEventListener('dragleave', () => {
 dropzone.addEventListener('drop', (e) => {
   e.preventDefault();
   dropzone.classList.remove('dragover');
-  const files = e.dataTransfer.files;
-  if (files.length > 0) {
-    handleFile(files[0]);
-  }
+  if (e.dataTransfer.files.length > 0) handleFile(e.dataTransfer.files[0]);
 });
 
 window.addEventListener('dragover', (e) => e.preventDefault());
 window.addEventListener('drop', (e) => e.preventDefault());
 
 fileInput.addEventListener('change', (e) => {
-  if (e.target.files.length > 0) {
-    handleFile(e.target.files[0]);
-  }
+  if (e.target.files.length > 0) handleFile(e.target.files[0]);
 });
 
 refreshBtn.addEventListener('click', loadFakturaer);
-
-// =====================================================
-// QR-modal event listeners
-// =====================================================
 
 qrBtn.addEventListener('click', openQrModal);
 modalClose.addEventListener('click', closeQrModal);
 modalOverlay.addEventListener('click', closeQrModal);
 
-// Luk modal med Escape
 document.addEventListener('keydown', (e) => {
-  if (e.key === 'Escape' && !qrModal.classList.contains('hidden')) {
-    closeQrModal();
-  }
+  if (e.key === 'Escape' && !qrModal.classList.contains('hidden')) closeQrModal();
 });
 
 // =====================================================
-// QR-bridging
+// QR-bridging (uændret)
 // =====================================================
 
 function openQrModal() {
-  // Generér ny session-token
   currentSessionToken = generateSessionToken();
-  
-  // Byg upload-URL
   const baseUrl = window.location.origin;
   const uploadUrl = `${baseUrl}/upload.html?session=${currentSessionToken}`;
   
-  // Vis modal
   qrModal.classList.remove('hidden');
-  
-  // Generér QR-kode
   qrContainer.innerHTML = '';
   new QRCode(qrContainer, {
     text: uploadUrl,
@@ -110,15 +98,9 @@ function openQrModal() {
     colorLight: '#ffffff',
     correctLevel: QRCode.CorrectLevel.M
   });
-  
-  // Vis URL som fallback (kan kopieres hvis QR ikke virker)
   qrUrlFallback.textContent = uploadUrl;
-  
-  // Reset status
   qrStatus.classList.remove('received');
   qrStatus.querySelector('span').textContent = 'Venter på fil fra telefon...';
-  
-  // Start polling
   startPolling();
 }
 
@@ -129,30 +111,17 @@ function closeQrModal() {
 }
 
 function startPolling() {
-  stopPolling(); // sikkerhed
-  
+  stopPolling();
   qrPollingInterval = setInterval(async () => {
     if (!currentSessionToken) return;
-    
     try {
-      // List filer i bridge-bucket der starter med session-token
-      const { data, error } = await db.storage
-        .from(BRIDGE_BUCKET)
-        .list('', {
-          search: currentSessionToken
-        });
-      
-      if (error) {
-        console.error('Polling-fejl:', error);
-        return;
-      }
-      
+      const { data, error } = await db.storage.from(BRIDGE_BUCKET).list('', {
+        search: currentSessionToken
+      });
+      if (error) return;
       if (data && data.length > 0) {
-        // Fundet! Match efter præcis filnavn-prefix
         const fundetFil = data.find(f => f.name.startsWith(currentSessionToken + '.'));
-        if (fundetFil) {
-          await handleBridgeFile(fundetFil);
-        }
+        if (fundetFil) await handleBridgeFile(fundetFil);
       }
     } catch (e) {
       console.error('Polling-fejl:', e);
@@ -168,40 +137,26 @@ function stopPolling() {
 }
 
 async function handleBridgeFile(fundetFil) {
-  // Stop polling med det samme - undgå dobbelthåndtering
   stopPolling();
-  
-  // Vis bekræftelse
   qrStatus.classList.add('received');
   qrStatus.querySelector('span').textContent = '✓ Fil modtaget – behandler...';
   
   try {
-    // Download filen fra bridge-bucket
     const { data: blob, error: downloadError } = await db.storage
-      .from(BRIDGE_BUCKET)
-      .download(fundetFil.name);
-    
+      .from(BRIDGE_BUCKET).download(fundetFil.name);
     if (downloadError) throw downloadError;
     
-    // Lav et File-objekt så vi kan bruge samme handleFile-flow
     const fileExt = fundetFil.name.split('.').pop().toLowerCase();
     const mimeType = getMimeTypeFromExt(fileExt);
     const file = new File([blob], `mobil-upload.${fileExt}`, { type: mimeType });
     
-    // Slet bridge-filen (den er nu overført til vores normale flow)
     await db.storage.from(BRIDGE_BUCKET).remove([fundetFil.name]);
-    
-    // Luk modal
     closeQrModal();
-    
-    // Kør den normale upload-pipeline
     await handleFile(file);
-    
   } catch (error) {
     console.error('Bridge-fejl:', error);
     qrStatus.classList.remove('received');
     qrStatus.querySelector('span').textContent = 'Fejl: ' + error.message;
-    // Genstart polling i tilfælde af det var en transient fejl
     setTimeout(() => {
       if (!qrModal.classList.contains('hidden')) {
         qrStatus.querySelector('span').textContent = 'Venter på fil fra telefon...';
@@ -212,7 +167,6 @@ async function handleBridgeFile(fundetFil) {
 }
 
 function generateSessionToken() {
-  // UUID v4-lignende
   return 'xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx'.replace(/[xy]/g, function(c) {
     const r = Math.random() * 16 | 0;
     const v = c === 'x' ? r : (r & 0x3 | 0x8);
@@ -222,23 +176,17 @@ function generateSessionToken() {
 
 function getMimeTypeFromExt(ext) {
   const map = {
-    'pdf': 'application/pdf',
-    'jpg': 'image/jpeg',
-    'jpeg': 'image/jpeg',
-    'png': 'image/png',
-    'heic': 'image/heic',
-    'heif': 'image/heif'
+    'pdf': 'application/pdf', 'jpg': 'image/jpeg', 'jpeg': 'image/jpeg',
+    'png': 'image/png', 'heic': 'image/heic', 'heif': 'image/heif'
   };
   return map[ext] || 'application/octet-stream';
 }
 
 // =====================================================
-// Filhåndtering (uændret fra før)
+// Filhåndtering
 // =====================================================
 
 async function handleFile(file) {
-  console.log('handleFile kaldt med:', file.name, file.type, file.size);
-  
   const maxSize = 25 * 1024 * 1024;
   
   if (!file.type.startsWith('image/') && file.type !== 'application/pdf') {
@@ -258,20 +206,12 @@ async function handleFile(file) {
     const fileId = generateId();
     const filePath = `${fileId}.${fileExt}`;
     
-    console.log('Uploader til Supabase Storage:', filePath);
-    
-    const { data: uploadData, error: uploadError } = await db.storage
+    const { error: uploadError } = await db.storage
       .from(SUPABASE_BUCKET)
-      .upload(filePath, file, {
-        contentType: file.type,
-        upsert: false
-      });
-    
+      .upload(filePath, file, { contentType: file.type, upsert: false });
     if (uploadError) throw uploadError;
-    console.log('Upload OK:', uploadData);
     
     showStatus('Gemmer i database...');
-    
     const { data: fakturaData, error: insertError } = await db
       .from('fakturaer')
       .insert({
@@ -283,12 +223,9 @@ async function handleFile(file) {
       })
       .select()
       .single();
-    
     if (insertError) throw insertError;
-    console.log('DB-række oprettet:', fakturaData.id);
     
     showStatus('Læser faktura med AI...');
-    
     const extractResponse = await fetch('/api/extract', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
@@ -305,19 +242,13 @@ async function handleFile(file) {
     }
     
     hideStatus();
-    
     window.location.href = `faktura.html?id=${fakturaData.id}`;
-    
   } catch (error) {
-    console.error('Fejl ved upload/ekstraktion:', error);
+    console.error('Fejl:', error);
     hideStatus();
     alert('Der opstod en fejl: ' + error.message);
   }
 }
-
-// =====================================================
-// Status og liste (uændret)
-// =====================================================
 
 function showStatus(text) {
   statusText.textContent = text;
@@ -327,6 +258,10 @@ function showStatus(text) {
 function hideStatus() {
   uploadStatus.classList.add('hidden');
 }
+
+// =====================================================
+// Liste
+// =====================================================
 
 async function loadFakturaer() {
   fakturaList.innerHTML = '<p class="loading">Indlæser...</p>';
@@ -346,9 +281,8 @@ async function loadFakturaer() {
     }
     
     fakturaList.innerHTML = data.map(renderFakturaItem).join('');
-    
   } catch (error) {
-    console.error('Fejl ved indlæsning:', error);
+    console.error('Fejl:', error);
     fakturaList.innerHTML = `<p class="empty">Fejl: ${error.message}</p>`;
   }
 }
@@ -367,8 +301,12 @@ function renderFakturaItem(faktura) {
   const statusTekst = {
     'uploaded': 'Uploadet',
     'extracting': 'Læser...',
-    'extracted': 'Læst',
-    'extraction_failed': 'Fejl'
+    'extracted': 'Klar til afsendelse',
+    'extraction_failed': 'Fejl',
+    'afventer_godkendelse': 'Afventer godkendelse',
+    'godkendt': 'Godkendt',
+    'afvist': 'Afvist',
+    'frigivet_til_bogforing': 'Frigivet'
   }[faktura.status] || faktura.status;
   
   return `
@@ -382,10 +320,6 @@ function renderFakturaItem(faktura) {
     </a>
   `;
 }
-
-// =====================================================
-// Hjælpefunktioner
-// =====================================================
 
 function generateId() {
   return Date.now().toString(36) + '-' + Math.random().toString(36).substring(2, 10);
@@ -403,9 +337,5 @@ function escapeHtml(text) {
   div.textContent = text;
   return div.innerHTML;
 }
-
-// =====================================================
-// Init
-// =====================================================
 
 loadFakturaer();
