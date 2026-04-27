@@ -22,6 +22,7 @@
       </div>
     </div>
     <div class="header-right">
+      <div id="bruger-vaelger-container"></div>
       <img src="logo.png" alt="BankInvest" class="logo">
     </div>
   </header>
@@ -34,12 +35,13 @@
     <div id="error" class="status-banner error hidden">
       <strong>Fejl:</strong> <span id="error-text"></span>
     </div>
+
+    <!-- Workflow-banner (Send til godkendelse / Afvist / Godkendt / Frigivet) -->
+    <div id="workflow-banner" class="hidden"></div>
     
     <div id="content" class="detail-container hidden">
       <div class="pdf-panel">
-        <div id="file-viewer-container">
-          <!-- PDF eller billede sættes ind her -->
-        </div>
+        <div id="file-viewer-container"></div>
       </div>
       
       <div class="felter-panel">
@@ -48,9 +50,7 @@
           <span id="konfidens-container"></span>
         </div>
         
-        <form id="felter-form" autocomplete="off">
-          <!-- Felter genereres af JS -->
-        </form>
+        <form id="felter-form" autocomplete="off"></form>
         
         <div class="felter-actions">
           <span id="changes-indicator" class="changes-indicator none">Ingen ændringer</span>
@@ -69,6 +69,7 @@
 
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
   <script src="config.js"></script>
+  <script src="brugere.js"></script>
   <script src="faktura.js"></script>
 </body>
 </html>
