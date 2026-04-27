@@ -1,9 +1,8 @@
-
 # Fakturagodkendelsessystem - Projektdokument
 
 > **Status:** PoC i drift
-> **Version:** 1.0
-> **Senest opdateret:** 26. april 2026
+> **Version:** 1.1
+> **Senest opdateret:** 27. april 2026
 > **Ejer:** Allan
 > **Repository:** github.com/afunky11/Fakturagodkendelse
 > **URL:** fakturagodkendelse.vercel.app
@@ -20,15 +19,22 @@ PoC'en er bygget for at bevise at AI kan læse fakturaer pålideligt nok til at 
 
 | Lag | PoC | Produktion (IT) |
 |-----|-----|-----------------|
-| Frontend | Vanilla HTML/JS på Vercel | TBD – sandsynligvis React-baseret |
-| Backend | Vercel Serverless Functions | .NET eller Node på Kubernetes |
+| Frontend + Backend | Vanilla HTML/JS + Vercel Serverless Functions | **Plotly Dash (Python)** på Dash Enterprise |
 | Database | Supabase (PostgreSQL) | Oracle |
 | Storage | Supabase Storage | Azure Blob (med immutability policy) |
 | LLM/OCR | Mistral API (`mistral-large-latest`) | Azure OpenAI (data forbliver i egen tenant) |
-| Auth | Ingen (PoC) | Azure AD / Entra ID |
-| Identity | Ingen (PoC) | Azure AD / Entra ID |
+| Auth | Ingen (PoC) | Azure AD / Entra ID via Dash Enterprise |
+| Drift | Vercel | Dash Enterprise i BankInvest's eget miljø |
 
-**Begrundelse for PoC-stak:** Genbrug af AI Tutor-stakken giver hurtig iteration uden Node.js-opsætning. Mistral-nøglen holdes serverside via Vercel Serverless Functions for sikkerhed. Når kravene er moden, porteres til IT's egen stak.
+**Begrundelse for PoC-stak:** Genbrug af AI Tutor-stakken giver hurtig iteration uden Node.js-opsætning. Mistral-nøglen holdes serverside via Vercel Serverless Functions for sikkerhed. Når kravene er modne, porteres til IT's egen Plotly Dash-stak.
+
+**Hvad portering til Dash betyder:**
+
+- **Datamodel og forretningslogik** porteres direkte (`setup.sql` kan tilpasses Oracle, Mistral-kald skrives om i Python)
+- **UX-design og workflow** kan kopieres som mockup – Dash-komponenter ligner HTML konceptuelt
+- **Frontend-kode** skal omskrives fra HTML/JS til Python/Dash, men det er typisk under 20% af det samlede arbejde
+- **Auth, RLS og roller** bygges fra start i Dash Enterprise (vi har bevidst ikke bygget det i PoC)
+- **Mistral skiftes til Azure OpenAI** så data forbliver i BankInvest's egen tenant
 
 ## 3. Overordnet flow
 
@@ -150,37 +156,66 @@ Første PoC-iteration kører **uden login**. Alle besøgende kan uploade og se f
 
 ## 9. Næste iterationer
 
-**Eksport til bogføringssystem (kritisk – uden denne er PoC ikke en reel forretningsværdi):**
-- Afklaring af import-format (CSV, XML, JSON, andet) hos det custom bogføringssystem
-- Definition af felt-mapping mellem vores datamodel og bogføringssystemets format
-- Generering af bogføringsfil per faktura eller batch
-- Status-flow så fakturaen markeres som "bogført" når filen er genereret/overført
-- Dokumentation af eksempel-fil og felt-mapping til IT
+PoC'en fortsættes til alle kerne-PoC-spørgsmål er besvaret. Hver iteration besvarer ét eller flere spørgsmål, så IT ved hvad der virker, hvad der er svært, og hvilke antagelser de skal være forsigtige med ved produktionsbygning.
 
-**Skabelon-funktionalitet (commit 2):**
+**Iteration A: Skabelon-funktionalitet**
+
+PoC-spørgsmål: *Kan AI lære BankInvest's konventioner ud fra historik?*
+
 - "Gem som ny leverandør"-knap der opretter skabelon
-- Auto-link af nye fakturaer til eksisterende skabelon via CVR
+- Auto-link via CVR ved nye fakturaer
 - Auto-udfyld af leverandørdata fra skabelon
 - Mistral får 5 seneste bogføringsbeskrivelser med i prompten ved match
 - "Synk til skabelon"-knap når man retter leverandørdata på fakturaen
 - Leverandør-oversigtsside
 
-**Godkendelsesflow:**
-- Godkender-rolle og UI
-- Beløbsgrænser for godkendelse
+**Iteration B: Eksport til bogføringssystem**
+
+PoC-spørgsmål: *Kan vi generere en fil i det custom systems format med rette dimensioner og fordeling?*
+
+- Afklaring af import-format hos IT/leverandør
+- Felt-mapping mellem datamodel og bogføringsformat
+- Generering af bogføringsfil per faktura eller batch
+- Status-flow så fakturaen markeres som "bogført"
+- Måling af antal manuelle rettelser per faktura
+
+**Iteration C: Reference tilbage fra bogføringssystem**
+
+PoC-spørgsmål: *Kan vi modtage bogførings-ID/posteringsnummer retur så loopet lukkes?*
+
+- Modtagelse af bogføringskvittering (pull eller push)
+- Lagring af eksternt bogførings-ID på fakturaen
+- Visning af bogført-status med reference
+- Sporbarhed fra modtagelse til bogført bilag
+- Evt. visning af betalt-status fra eksisterende afstemningssystem
+
+**Iteration D: Godkendelsesflow**
+
+PoC-spørgsmål: *Hvilke beløbsgrænser, godkenderhierarkier og flows giver mening i investeringsforeningskontekst?*
+
+- Simulering af brugere (uden rigtig auth – "vælg bruger" dropdown i PoC)
+- Beløbsgrænser per leverandør og/eller absolut
 - Status-flow: uploadet → læst → godkendt → frigivet → bogført
+- Fire-øje-princip på godkendelse over beløbsgrænse
+- Lærdom om hvilke roller der skal designes ind i Dash Enterprise senere
 
-**Avancerede features:**
-- Afvigelsesanalyse mod tidligere fakturaer
-- Anomali-detektion (ny bankkonto, store afvigelser)
-- CVR-validering mod CVR-registret
-- Dubletkontrol
-- Periodiseringsforslag
+**Iteration E: Betaling**
 
-**Betaling:**
-- Betalingsudvælgelse og batching
-- Fire-øje-godkendelse
+PoC-spørgsmål: *Kan vi generere ISO 20022 pain.001 og håndtere fordeling på flere afsenderkonti?*
+
+- Betalingsudvælgelse (forfaldsbaseret, manuel)
+- Batch-sammensætning per afsenderkonto og valuta
 - Generering af ISO 20022 pain.001
+- Fire-øje-godkendelse af betalingsbatch
+- Test af fil mod en bank-test-miljø (hvis muligt)
+
+**Andre features til senere overvejelse:**
+
+- Afvigelsesanalyse mod tidligere fakturaer
+- Anomali-detektion (ny bankkonto, store afvigelser i beløb)
+- CVR-validering mod CVR-registret
+- Dubletkontrol (præcis match og fuzzy match)
+- Periodiseringsforslag
 
 ## 10. Investeringsforeninger – strukturelle forhold
 
@@ -201,20 +236,33 @@ Konkrete spørgsmål der skal besvares:
 
 ## 11. Anbefalinger til IT ved overdragelse
 
-Selve PoC-koden er ikke produktionsklar – den er bygget til hurtig iteration og bevisførelse. Men datamodellen, UX-flowet og forretningslogikken er.
+Selve PoC-koden er ikke produktionsklar – den er bygget til hurtig iteration og bevisførelse. Men datamodellen, UX-flowet, forretningslogikken og **hver iterations PoC-svar** er.
 
-**Hvad IT bør portere:**
-- Datamodellen (ganske direkte fra `setup.sql`, evt. omsat til Oracle-syntaks)
-- Mistral-prompten og felt-mapping (i `api/extract.js`)
-- Workflow-logikken (status-overgange, ændringsspor)
-- BankInvest-design og UI-struktur
+**Hvad IT bør portere direkte til Plotly Dash:**
+- Datamodellen (`setup.sql` tilpasset Oracle)
+- Mistral-prompt og felt-mapping (skrives om i Python, men logikken er den samme)
+- Workflow-logikken (status-overgange, ændringsspor, audit-triggers)
+- BankInvest-design og UI-struktur (Dash-komponenter ligner HTML konceptuelt)
+- Resultater fra hver iteration (hvad virkede, hvad var svært, hvilke antagelser blev brudt)
 
-**Hvad IT bør gentænke:**
-- Auth + RLS + roller (PoC kører helt uden)
-- Skift fra Mistral til Azure OpenAI (data i egen tenant)
+**Hvad IT bør gentænke / bygge fra start:**
+- Auth + RLS + roller (Dash Enterprise integrerer med Azure AD)
+- Skift fra Mistral til Azure OpenAI (data forbliver i egen tenant)
 - Skift fra Supabase Storage til Azure Blob med immutability
 - Drift, monitoring, error-håndtering
 - Skalering hvis nødvendigt
+- Segregation of Duties
+
+**Værdien af PoC-iterationerne:**
+PoC'en kører igennem alle kritiske spørgsmål før IT bygger produktionsversionen. Det betyder at IT ved overdragelsen ikke bare modtager kode, men også **konkrete svar** på:
+- Kan AI læse fakturaerne pålideligt? (Iteration 1: ja)
+- Kan AI lære vores konventioner over tid? (Iteration A)
+- Kan vi generere bogføringsfilen? (Iteration B)
+- Kan vi lukke loopet med bogføringssystemet? (Iteration C)
+- Hvilket godkendelsesflow giver mening? (Iteration D)
+- Kan vi generere betalingsfilerne korrekt? (Iteration E)
+
+Det reducerer risikoen for at IT bygger noget der viser sig at være forkert designet.
 
 ## 12. Beslutningslog
 
@@ -236,6 +284,9 @@ Selve PoC-koden er ikke produktionsklar – den er bygget til hurtig iteration o
 | 2026-04-26 | Bogføringskonto som tekst-felt nu, kontoplan importeres senere | Pragmatisk start, kan opgraderes til dropdown |
 | 2026-04-26 | QR-bridging fra mobil til PC | Genbrug af mønster fra AI Tutor – beviset fungerer |
 | 2026-04-26 | Eksport af bogføringsfil prioriteres som kritisk leverance | Uden denne er systemet ikke en reel forretningsværdi – bogføring skal stadig indtastes manuelt. Format afklares hos IT/leverandør af bogføringssystem. |
+| 2026-04-27 | Produktionsversion bygges i Plotly Dash på Dash Enterprise | IT bruger allerede Dash – datamodel og forretningslogik kan porteres direkte. Frontend skrives om fra HTML/JS til Python. |
+| 2026-04-27 | PoC fortsættes til alle kerne-PoC-spørgsmål er besvaret | Billigere at bevise antagelser i Vercel end at bygge dem rigtigt i Dash først. Hver iteration besvarer et konkret spørgsmål før IT overtager. |
+| 2026-04-27 | Reference tilbage fra bogføringssystem tilføjes som PoC-iteration | Lukker loopet og giver fuld sporbarhed fra modtagelse til bogføring til betaling. |
 
 ---
 
