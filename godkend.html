@@ -1,0 +1,75 @@
+<!DOCTYPE html>
+<html lang="da">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Godkend - Fakturagodkendelse</title>
+  
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Work+Sans:wght@400;500;600;700&display=swap" rel="stylesheet">
+  
+  <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+  <header>
+    <div class="header-left">
+      <div class="header-titles">
+        <h1>Godkendelse</h1>
+        <p class="subtitle" id="page-subtitle">Indlæser...</p>
+      </div>
+    </div>
+    <div class="header-right">
+      <div id="bruger-vaelger-container"></div>
+      <img src="logo.png" alt="BankInvest" class="logo">
+    </div>
+  </header>
+
+  <main>
+    <div class="godkender-layout">
+      <!-- Venstre kolonne: kø -->
+      <aside class="godkender-koe">
+        <div class="godkender-koe-header">
+          <h2>Til godkendelse</h2>
+          <span class="godkender-koe-tael" id="koe-tael">0</span>
+        </div>
+        <div class="godkender-koe-liste" id="koe-liste">
+          <p class="loading">Indlæser...</p>
+        </div>
+      </aside>
+
+      <!-- Højre kolonne: detaljer -->
+      <section id="detalje-container">
+        <div class="godkender-vaelg-prompt">
+          <div class="godkender-vaelg-prompt-ikon">👈</div>
+          <p>Vælg en faktura fra køen for at godkende</p>
+        </div>
+      </section>
+    </div>
+  </main>
+
+  <!-- Afvis modal -->
+  <div id="afvis-modal" class="modal hidden">
+    <div class="modal-overlay" id="afvis-overlay"></div>
+    <div class="modal-content afvis-modal-content">
+      <button class="modal-close" id="afvis-close">×</button>
+      <h2>Afvis faktura</h2>
+      <p class="modal-desc">Skriv en kort kommentar til Allan om hvorfor fakturaen afvises.</p>
+      <textarea id="afvis-kommentar" placeholder="Fx: Forkert beløb, mangler bilag, dobbelt fakturering..."></textarea>
+      <div style="display: flex; gap: 8px; justify-content: flex-end;">
+        <button type="button" class="btn btn-tertiary" id="afvis-annuller">Annullér</button>
+        <button type="button" class="btn-afvis" id="afvis-bekraeft" style="padding: 10px 20px; font-size: 14px;">Afvis faktura</button>
+      </div>
+    </div>
+  </div>
+
+  <footer>
+    <p class="footer-text">PoC – ikke til produktion. Ingen login, åben adgang.</p>
+  </footer>
+
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+  <script src="config.js"></script>
+  <script src="brugere.js"></script>
+  <script src="godkend.js"></script>
+</body>
+</html>
